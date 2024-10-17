@@ -71,12 +71,19 @@ module.exports = async (req, res) => {
 
     // Process the event
     if (eventBody.event) {
-      await handleEvent({ event: eventBody.event, say: async (response) => {
-        // Implement a custom 'say' function for serverless environment
-        // This is a placeholder and might need to be adjusted based on your Slack app's configuration
-        console.log('Response to be sent:', response);
-        // You might want to use Slack's Web API here to send the message
-      }});
+      await handleEvent({ 
+        event: eventBody.event, 
+        say: async (response) => {
+          // Use Slack's Web API to send the message
+          await app.client.chat.postMessage({
+            token: process.env.SLACK_BOT_TOKEN,
+            channel: eventBody.event.channel,
+            text: response.text,
+            thread_ts: response.thread_ts
+          });
+          console.log('Response sent:', response);
+        }
+      });
       res.status(200).json({ ok: true });
     } else {
       throw new Error('No event found in the request body');

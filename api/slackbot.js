@@ -14,13 +14,13 @@ const app = new App({
   processBeforeResponse: true,
 });
 
-// Slack event listener for messages
-app.event('message', async ({ event, say }) => {
+// Function to handle both message and app_mention events
+const handleEvent = async ({ event, say }) => {
   try {
     // Ignore bot messages and messages without text
     if (event.bot_id || !event.text) return;
 
-    console.log('Received message:', event.text);
+    console.log('Received event:', event.type, 'with text:', event.text);
 
     // Send the message content to OpenAI for a response
     const completion = await openai.chat.completions.create({
@@ -37,13 +37,19 @@ app.event('message', async ({ event, say }) => {
     });
 
   } catch (error) {
-    console.error('Error processing message:', error);
+    console.error('Error processing event:', error);
     await say({
       text: 'Sorry, I encountered an error processing your message.',
       thread_ts: event.thread_ts || event.ts
     });
   }
-});
+};
+
+// Slack event listener for messages
+app.event('message', handleEvent);
+
+// Slack event listener for app mentions
+app.event('app_mention', handleEvent);
 
 // Vercel serverless function handler
 module.exports = async (req, res) => {

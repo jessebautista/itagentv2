@@ -1,12 +1,11 @@
 const { App } = require('@slack/bolt');
-const { Configuration, OpenAIApi } = require('openai');
+const OpenAI = require('openai');
 require('dotenv').config();
 
 // Initialize OpenAI API
-const configuration = new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-const openai = new OpenAIApi(configuration);
 
 // Initialize the Slack app
 const app = new App({
@@ -16,29 +15,32 @@ const app = new App({
 });
 
 // Slack event listener for messages
-app.message(async ({ event, say }) => {
+app.event('message', async ({ event, say }) => {
   try {
-    if (event.subtype && event.subtype === 'bot_message') return;
+    // Ignore bot messages and messages without text
+    if (event.bot_id || !event.text) return;
 
     console.log('Received message:', event.text);
 
-    const completion = await openai.createChatCompletion({
+    // Send the message content to OpenAI for a response
+    const completion = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: [{ role: 'user', content: event.text }],
       temperature: 0.7,
-      max_tokens: 500,
+      max_tokens: 500
     });
 
+    // Send back the OpenAI-generated response to Slack
     await say({
-      text: completion.data.choices[0].message.content,
-      thread_ts: event.thread_ts || event.ts,
+      text: completion.choices[0].message.content,
+      thread_ts: event.thread_ts || event.ts // This will reply in thread if message is in thread
     });
 
   } catch (error) {
     console.error('Error processing message:', error);
     await say({
       text: 'Sorry, I encountered an error processing your message.',
-      thread_ts: event.thread_ts || event.ts,
+      thread_ts: event.thread_ts || event.ts
     });
   }
 });
@@ -50,15 +52,16 @@ module.exports = async (req, res) => {
   }
 
   // Handle Slack URL verification
-  if (req.body && req.body.type === 'url_verification') {
+  if (req.body.type === 'url_verification') {
     return res.status(200).json({ challenge: req.body.challenge });
   }
 
   try {
+    // Process the event
     await app.processEvent(req.body);
-    return res.status(200).json({ ok: true });
+    res.status(200).json({ ok: true });
   } catch (error) {
     console.error('Error processing event:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };

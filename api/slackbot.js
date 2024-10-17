@@ -63,9 +63,24 @@ module.exports = async (req, res) => {
   }
 
   try {
+    // Log the incoming request body for debugging
+    console.log('Incoming request body:', JSON.stringify(req.body));
+
+    // Check if the event is nested inside a 'payload' property (common with some Slack integrations)
+    const eventBody = req.body.payload ? JSON.parse(req.body.payload) : req.body;
+
     // Process the event
-    await app.processEvent(req.body);
-    res.status(200).json({ ok: true });
+    if (eventBody.event) {
+      await handleEvent({ event: eventBody.event, say: async (response) => {
+        // Implement a custom 'say' function for serverless environment
+        // This is a placeholder and might need to be adjusted based on your Slack app's configuration
+        console.log('Response to be sent:', response);
+        // You might want to use Slack's Web API here to send the message
+      }});
+      res.status(200).json({ ok: true });
+    } else {
+      throw new Error('No event found in the request body');
+    }
   } catch (error) {
     console.error('Error processing event:', error);
     res.status(500).json({ error: 'Internal server error' });

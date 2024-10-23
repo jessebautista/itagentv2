@@ -22,10 +22,19 @@ const handleEvent = async ({ event, say }) => {
 
     console.log('Received event:', event.type, 'with text:', event.text);
 
-    // Send the message content to OpenAI for a response
+    // Custom system instruction
+    const customInstruction = {
+      role: 'system',
+      content: 'You are a helpful assistant that provides concise responses in a polite and professional tone. Always answer in less than 30 words.'
+    };
+
+    // Send the message content to OpenAI for a response with the system instruction
     const completion = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
-      messages: [{ role: 'user', content: event.text }],
+      messages: [
+        customInstruction,
+        { role: 'user', content: event.text }
+      ],
       temperature: 0.7,
       max_tokens: 500
     });
